@@ -15,7 +15,6 @@ final int rolling_buffer_size = 1;
 
 PImage[] prevs = new PImage[rolling_buffer_size];
 
-
 float threshold = 50;
 float thresholdSize = 200;
 
@@ -27,17 +26,22 @@ final String movieFile = "MOV_0017.mp4";
 final int v_w = 640;
 final int v_h = 480;
 
+int playingSpeed = 1 << 4;
+
 boolean isPlaying = false;
-
 boolean manualSlider = false;
-
 boolean autoPause = false;
+boolean _playSingleFrame = false;
 
 Toggle playToggle;
 Toggle autoPauseToggle;
 Slider seekSlider;
 Slider tresholdSlider;
 Slider tresholdSizeSlider;
+Button singleFrameButton;
+Button slowerButton;
+Button speedButton;
+Button fasterButton;
 
 
 void settings() {
@@ -108,25 +112,68 @@ void setup() {
     .setPosition(nextX, 0)
     .setSize(80, toolbar_height)
     .setRange(0, 300)
-    .setValue(threshold);
+    .setValue(50);
 
-  tresholdSlider.getCaptionLabel().setText("threshold");  
-  
+  tresholdSlider.getCaptionLabel().setText("threshold").align(CENTER, BOTTOM);
+
   nextX += 80+10;
 
-  
-  tresholdSlider = cp5.addSlider("tresholdSizeSliderChange")
+
+  tresholdSizeSlider = cp5.addSlider("tresholdSizeSliderChange")
     .setPosition(nextX, 0)
-    .setSize(80, toolbar_height)
-    .setRange(0, 300)
-    .setValue(threshold);
+    .setSize(140, toolbar_height)
+    .setRange(0, 10000)
+    .setValue(200);
 
-  tresholdSlider.getCaptionLabel().setText("min detect size");
+  tresholdSizeSlider.getCaptionLabel().setText("min detect size").align(CENTER, BOTTOM).setPaddingY(5);
+  nextX += 140+20;
 
-  nextX += 80+10;
+  autoPauseToggle = cp5.addToggle("toggleAutoPause")
+    .setPosition(nextX, 0)
+    .setSize(50, toolbar_height/2)
+    .setValue(false);
+
+  autoPauseToggle.getCaptionLabel().setText("Pause on detect").alignX(CENTER);
+  nextX += 50+20;
 
 
-  // add a seek slider
+  singleFrameButton = cp5.addButton("playSingleFrame")
+    .setPosition(nextX, 0)
+    .setSize(50, toolbar_height);
+
+  singleFrameButton.getCaptionLabel().align(CENTER, CENTER).setText("single >");
+  nextX += 50+10;
+
+
+  nextX += 10;
+
+
+  slowerButton = cp5.addButton("slowerSpeed")
+    .setPosition(nextX, 0)
+    .setSize(30, toolbar_height);
+
+  slowerButton.getCaptionLabel().align(CENTER, CENTER).setSize(20).setText("<<");
+  nextX += 30+5;
+
+
+  speedButton = cp5.addButton("resetSpeed")
+    .setPosition(nextX, 0)
+    .setSize(40, toolbar_height);
+
+  speedButton.getCaptionLabel().align(CENTER, CENTER).setSize(13).setText("x1");
+  nextX += 40+5;
+
+  fasterButton = cp5.addButton("fasterSpeed")
+    .setPosition(nextX, 0)
+    .setSize(30, toolbar_height);
+
+  fasterButton.getCaptionLabel().align(CENTER, CENTER).setSize(20).setText(">>");
+  nextX += 30+10;
+
+
+
+
+
   seekSlider = cp5.addSlider("seekSliderChange")
     .setPosition(0, v_h + toolbar_height)
     .setSize(width, seekbar_height)
@@ -148,19 +195,6 @@ void setup() {
     .setSize(14)
     .align(ControlP5.RIGHT, ControlP5.BOTTOM)
     .setPaddingX(30);
-    
-    
-  autoPauseToggle = cp5.addToggle("toggleAutoPause")
-     .setPosition(nextX, 0)
-     .setSize(50, toolbar_height/2)
-     .setValue(false)
-     .setMode(ControlP5.SWITCH);
-     
-     
-  autoPauseToggle.getCaptionLabel().setText("Pause on detection");
-     
-  nextX += 50+10;
-     
 }
 
 
@@ -179,7 +213,7 @@ void draw() {
   loadPixels();
 
   // loop through every pixel
-  for (int x = 0; x < movie.width; x++ ) {
+  for (int x = 0; x < movie.width-2; x++ ) {
     for (int y = 0; y < movie.height; y++ ) {
       int loc = x + y * movie.width;
 
@@ -223,11 +257,11 @@ void draw() {
     fill(255, 0, 255, 20);
     strokeWeight(2.0);
     stroke(255, 0, 0);
-    if (bb.minX < bb.maxY && bb.minY < bb.maxY)
-      rect((float)bb.minX, (float)bb.minY, (float)bb.maxX, (float)bb.maxY);
-      
+
+    rect((float)bb.minX, (float)bb.minY, (float)bb.maxX, (float)bb.maxY);
+
     if (autoPause)
-      playTogglePress(false);
+      setPlaying(false);
   }
 
 
@@ -235,7 +269,7 @@ void draw() {
   manualSlider = false;
   seekSlider.setValue(movie.time());
 
-  if (isPlaying)
+  if (isPlaying || _playSingleFrame)
     movie.play();
   else
     movie.pause();
@@ -257,17 +291,30 @@ void movieEvent(Movie movie) {
     prevs[p].updatePixels();
   }
   movie.read();
+  _playSingleFrame = false;
 }
 
-// Called when any control is pressed
-public void controlEvent(ControlEvent theEvent) {
-  //println(theEvent.getController().getName());
+
+// Automagically called when toggle is pressed
+public void setPlaying(boolean state) {
+  if (playToggle != null) {
+    playToggle.setState(state);
+    playToggle.getCaptionLabel().setText(state ? "pause" : "play");
+  }
+
+  isPlaying = state;
 }
+
 
 // Automagically called when toggle is pressed
 public void playTogglePress(boolean state) {
-  if (playToggle != null)
+  if (playToggle != null) {
     playToggle.getCaptionLabel().setText(state ? "pause" : "play");
+    if (state)
+      _playSingleFrame = true;
+  }
+
+
 
   isPlaying = state;
 }
@@ -280,7 +327,7 @@ void tresholdSizeSliderChange(float val) {
   thresholdSize = int(val);
 }
 
-void toggleAutoPause(boolean state){
+void toggleAutoPause(boolean state) {
   autoPause = state;
 }
 
@@ -297,4 +344,37 @@ void seekSliderChange(float val) {
   }
 
   image(movie, 0, toolbar_height);
+}
+
+
+void playSingleFrame(int __) {
+  _playSingleFrame = true;
+}
+
+void setSpeed(int speed) {
+  if (speed >= (1 << 9))
+    return;
+  if (speed <= 1)
+    return;
+
+  playingSpeed = speed;
+
+  movie.speed(playingSpeed/16.0);
+
+  if (playingSpeed < 16)
+    speedButton.getCaptionLabel().setText("x 1/" + str(16/playingSpeed));
+  else
+    speedButton.getCaptionLabel().setText("x " + str(playingSpeed/16));
+}
+
+void fasterSpeed(int __) {
+  setSpeed(playingSpeed << 1);
+}
+
+void slowerSpeed(int __) {
+  setSpeed(playingSpeed >> 1);
+}
+
+void resetSpeed(int __) {
+  setSpeed(1 << 4);
 }

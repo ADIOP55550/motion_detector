@@ -1,8 +1,8 @@
 public class BoundingBox {
-    private double minX;
-    private double maxX;
-    private double minY;
-    private double maxY;
+    public double minX;
+    public double maxX;
+    public double minY;
+    public double maxY;
 
     public BoundingBox(List<Point> points) {
         minX = Double.MAX_VALUE;
@@ -29,19 +29,4 @@ public class BoundingBox {
         }
     }
 
-    public double getMinX() {
-        return minX;
-    }
-
-    public double getMaxX() {
-        return maxX;
-    }
-
-    public double getMinY() {
-        return minY;
-    }
-
-    public double getMaxY() {
-        return maxY;
-    }
 }
